@@ -61,26 +61,20 @@ Xent allows each platform to use its optimal rendering technology:
 - Compiles to direct platform API calls.
 - Cold start < 50ms.
 
-### 2. **Type-Safe Reactivity**
-- Business logic stays isolated from View definitions.
-- Views bind directly to State signals or method pointers.
-- Compile-time enforcement of event handlers.
-
-```cpp
-// ✅ Type-safe binding
-.on_click(&State::increment, &state)
-```
+### 2. **Strict Architecture**
+- **Ownership**: Explicit `std::unique_ptr` hierarchy. No hidden shared state or ambiguous lifecycles.
+- **Purity**: `xent-core` is purely data-driven. Zero platform dependencies (no COM/D2D pointers).
+- **Safety**: Compile-time enforcement of layout and event handlers.
 
 ### 3. **Native First**
 - No "painted" widgets that feel wrong.
-- Each platform uses its native design language automatically:
-  - Windows app feels like a Windows app (Fluent).
-  - Linux app feels like a Linux app.
-  - macOS app feels like a Mac app.
+- Windows uses DirectComposition + Direct2D for true native performance.
+- Linux uses Wayland/EFL.
+- macOS uses SwiftUI/Metal.
 
 ### 4. **No Compromise**
 - Rejects "lowest common denominator" features.
-- Exposes platform-specific capabilities (like Mica on Windows) where available, while maintaining a shared core API.
+- Exposes platform-specific capabilities (like Mica on Windows) where available.
 
 ---
 
@@ -152,27 +146,30 @@ xmake run hello-fluxent
 
 ## Component Tree (DSL)
 
-Xent uses a declarative syntax to build UI hierarchies.
+Xent uses a declarative, fluent syntax to build UI hierarchies with strict ownership semantics.
 
 ```cpp
 // Example: A simple counter component
-auto ui = 
-  vstack(
-      text("Counter App").font_size(24).margin(10),
-      
-      hstack(
-          button("-").on_click(&State::decrement, &state),
-          text(state.count_string),
-          button("+").on_click(&State::increment, &state)
-      ).gap(20)
-      
-  ).align_items(YGAlignCenter);
+using namespace xent::dsl;
+
+return Create<VStack>({
+    Create<Text>("Counter App") // Temporary Text created
+        .FontSize(24)
+        .Margin(10),
+
+    Create<HStack>({
+        Create<Button>("-").OnClick(&State::decrement, &state),
+        Create<Text>(state.count_string),
+        Create<Button>("+").OnClick(&State::increment, &state)
+    }).Gap(20)
+
+}).AlignItems(YGAlignCenter);
 ```
 
 ### Core Components
 - **Layouts**: `VStack`, `HStack`, `Spacer`
 - **Controls**: `Text`, `Button`, `CheckBox`, `RadioButton`, `ToggleButton`
-- **Modifiers**: `.padding()`, `.background()`, `.corner_radius()`, `.on_click()`
+- **Modifiers**: `.Padding()`, `.Background()`, `.CornerRadius()`, `.OnClick()`
 
 ---
 
