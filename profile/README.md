@@ -9,6 +9,8 @@
 
 ---
 
+![FluXent-Example](https://github.com/Project-Xent/fluxent/blob/main/examples/hello_fluxent/Hello-FluXent.png?raw=true)
+
 ## What is Project Xent?
 
 Project Xent is an architectural pattern for building high-performance native applications.
@@ -173,14 +175,38 @@ return Create<VStack>({
 
 ---
 
-## Roadmap
+### Core Components (updated)
+- **Layouts**: `VStack`, `HStack`, `Spacer`, `Grid`
+- **Controls**: `Text`, `TextBox`, `Button`, `ToggleButton`, `ToggleSwitch`, `CheckBox`, `RadioButton`, `Slider`, `ScrollView`
+- **Visuals**: Icon support for controls, theming and WinUI3-style visuals
+- **Modifiers**: `.Padding()`, `.Background()`, `.CornerRadius()`, `.OnClick()`, `.Icon()`
+
+---
+
+## Recent Implementations
+
+The repository has recently landed several features and refactors. Notable items from the commit history:
+
+- `TextBox` control with IME support and input/IME integration
+- `Slider` and `ScrollView` controls plus animation utilities
+- `ToggleSwitch` control and improved control rendering
+- Checkbox visual states and improved Button/Toggle visuals (WinUI3-style)
+- Icon support for `Button` and `ToggleButton`
+- Plugin system added
+- Replaced `std::function` with `xent::Delegate` for callback efficiency
+- Added `tl::expected` third-party header
+- Large refactors of controls, rendering and input handling
+
+## Roadmap (updated)
 
 - [x] **Core**: Reactivity system and Yoga layout integration.
 - [x] **Windows**: DirectComposition rendering pipeline.
 - [x] **Windows**: Basic Fluent controls (Button, Toggle, Checkbox).
-- [ ] **Windows**: Advanced Layouts (Grid, ScrollView).
-- [ ] **Linux**: Initial Wayland surface integration.
-- [ ] **macOS**: Metal/SwiftUI bridge prototype.
+- [x] **Windows**: TextBox, IME support, ToggleSwitch, Slider, ScrollView, icons and improved button visuals.
+- [x] **Windows**: Plugin system and callback refactor (`xent::Delegate`).
+- [ ] **Windows**: Complete advanced layout components (Grid polishing, virtualization)
+- [ ] **Linux**: Initial Wayland surface integration and LuXent port.
+- [ ] **macOS**: Metal/SwiftUI bridge prototype and NeXent port.
 
 ---
 
