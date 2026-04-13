@@ -1,6 +1,9 @@
 # Project Xent
 
-**A pure-C UI layout engine paired with a Windows Fluent Design framework — currently under active development.**
+**A pure-C UI layout engine — currently under active development.**  
+[![License](https://img.shields.io/badge/License-0BSD-228B22.svg)](https://opensource.org/licenses/0BSD)
+[![Standard](https://img.shields.io/badge/Standard-C23-00599C.svg)](https://www.iso.org/standard/82075.html)
+[![ISPC](https://img.shields.io/badge/Parallel-ISPC-0071C5.svg)](https://ispc.github.io/)
 
 ---
 
