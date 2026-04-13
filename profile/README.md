@@ -1,226 +1,178 @@
 # Project Xent
 
-**Modern, Native, Zero-Compromise UI Framework for C++**
-
-> Write once in C++, render natively on any OS.
-
-[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
-[![Standard](https://img.shields.io/badge/C%2B%2B-20-00599C.svg)]()
+**A pure-C UI layout engine paired with a Windows Fluent Design framework — currently under active development.**
 
 ---
 
-![FluXent-Example](https://github.com/Project-Xent/fluxent/blob/main/examples/hello_fluxent/Hello-FluXent.png?raw=true)
+## Overview
 
-## What is Project Xent?
+Project Xent is split into two repositories with a clear separation of concerns:
 
-Project Xent is an architectural pattern for building high-performance native applications.
-
-Unlike other frameworks that ship a bundled rendering engine, Xent bridges a high-level C++ reactive DSL directly to the OS's most performant native compositor.
-
-```
-Shared Logic (xent-core) + Native Rendering (per platform) = True Native Experience
-```
-
-Xent allows each platform to use its optimal rendering technology:
-- **Windows**: DirectComposition + Fluent Design (FluXent)
-- **Linux**: Wayland/X11 + EFL (LuXent)
-- **macOS**: SwiftUI Integration (NeXent)
-
----
-
-## Architecture
+- **[xent-core](https://github.com/Project-Xent/xent-core)** — cross-platform UI layout engine written in C. Handles node tree management, layout computation, text measurement, accessibility semantics, and SIMD-accelerated calculations. No rendering, no OS dependencies.
+- **[fluxent](https://github.com/Project-Xent/fluxent)** — Windows-only Fluent Design UI framework built on top of xent-core. Handles rendering (Direct2D / DirectWrite / DirectComposition), the full control library, input, theming, and animation.
 
 ```
-                Your Application Code
-                  (One codebase)
-                        ↓
-        ┌───────────────────────────────────┐
-        │         xent-core                 │
-        │  • Layout (Yoga Flexbox)          │
-        │  • Reactive View Tree             │
-        │  • Signal-based State             │
-        │  (Zero OS dependencies)           │
-        └───────────────────────────────────┘
-                        ↓
-        ┌───────────────┼───────────────┐
-        ↓               ↓               ↓
-  ┌─────────┐     ┌─────────┐     ┌─────────┐
-  │ FluXent │     │ LuXent  │     │ NeXent  │
-  │(Windows)│     │(Linux)* │     │(macOS)* │
-  └─────────┘     └─────────┘     └─────────┘
-      ↓               ↓               ↓
- Native API      Native API      Native API
-```
-
-*\*Implementation in progress*
-
----
-
-## Design Principles
-
-### 1. **Zero Overhead**
-- No virtual machine, no heavy runtime.
-- Compiles to direct platform API calls.
-- Cold start < 50ms.
-
-### 2. **Strict Architecture**
-- **Ownership**: Explicit `std::unique_ptr` hierarchy. No hidden shared state or ambiguous lifecycles.
-- **Purity**: `xent-core` is purely data-driven. Zero platform dependencies (no COM/D2D pointers).
-- **Safety**: Compile-time enforcement of layout and event handlers.
-
-### 3. **Native First**
-- No "painted" widgets that feel wrong.
-- Windows uses DirectComposition + Direct2D for true native performance.
-- Linux uses Wayland/EFL.
-- macOS uses SwiftUI/Metal.
-
-### 4. **No Compromise**
-- Rejects "lowest common denominator" features.
-- Exposes platform-specific capabilities (like Mica on Windows) where available.
-
----
-
-## Naming
-
-```
-Xent    = eXtensible Native Toolkit
-
-FluXent = Fluent + Xent (Windows Implementation)
-          Uses DirectComposition and Win32 APIs to deliver 
-          next-gen Fluent Design.
-
-LuXent  = Lux (Light) + Xent (Linux/Unix Implementation)
-          Leverages EFL and Wayland for a lightweight, 
-          fast Unix experience.
-
-NeXent  = NeXT + Xent (macOS Implementation)
-          Bridges C++ logic with SwiftUI/Cocoa.
+┌────────────────────────────────────────────────────────┐
+│                       fluxent                          │
+│  Win32 · Direct2D · DirectWrite · DirectComposition   │
+│  Controls (18) · Input · Theme · Animation · Popup    │
+└───────────────────────┬────────────────────────────────┘
+                        │ XentNodeId / XentContext
+                        ▼
+┌────────────────────────────────────────────────────────┐
+│                      xent-core                         │
+│  Layout: Flex · SwiftStack · Grid · Absolute          │
+│  Text measurement · ISPC SIMD · Semantics · Plugins   │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Platform Status
+## xent-core
 
-| Platform | Implementation | Status |
-|----------|---------------|--------|
-| **Windows 10/11** | FluXent | 🚧 **In Development** (Fluent v2/Mica supported) |
-| **Linux (Wayland)** | LuXent | 📅 **Planned** |
-| **macOS** | NeXent | 📅 **Planned** |
+**Repository**: [github.com/Project-Xent/xent-core](https://github.com/Project-Xent/xent-core)  
+**Language**: C · **Build**: xmake  
+**Latest commit**: Replace Highway SIMD backend with ISPC (2026-04-13)
+
+### Layout protocols
+
+| Protocol | Description |
+|----------|-------------|
+| Flex | Full Flexbox — row/column, wrap, justify, align, grow/shrink |
+| SwiftStack | Priority-based stack with spacers and `layout_priority` |
+| Grid | CSS Grid subset — AUTO/PIXEL/STAR tracks, row/column span (up to 16×16) |
+| Absolute | Explicit position/size |
+
+Incremental layout is supported via dirty-flag propagation (`DIRTY_SELF`, `DIRTY_SUBTREE`, `DIRTY_LAYOUT`). The engine skips clean subtrees on re-layout.
+
+### Node storage
+
+Nodes are stored in a Structure-of-Arrays (`XentNodeStore`) for cache-friendly access. Fields cover tree structure, layout inputs/outputs, Flex and SwiftStack properties, Grid definitions, text attributes, accessibility semantics, and focus metadata (`focusable`, `tab_index`).
+
+### SIMD acceleration
+
+ISPC kernels (runtime SSE4/AVX2 dispatch) accelerate:
+- Flex line statistics (four-way parallel reduction)
+- Flex grow/shrink distribution
+- SwiftStack spacer distribution (masked add, FMA, proportional reduce)
+- Dirty-flag batch OR / clear
+- Pixel quantization
+
+### Text subsystem
+
+- Pluggable `XentTextBackend` interface
+- Built-in Mono backend (no external dependencies): word-wrap, char-wrap, multi-line measurement
+- Two-level cache: `XentTextCache` + `XentShapeCache`
+
+### Control types (24)
+
+`Container` · `Text` · `Button` · `ToggleButton` · `Checkbox` · `Radio` · `Switch` · `Slider` · `TextInput` · `Scroll` · `Image` · `Progress` · `List` · `Tab` · `Card` · `Divider` · `Canvas` · `PasswordBox` · `NumberBox` · `Hyperlink` · `RepeatButton` · `ProgressRing` · `InfoBadge` · `Tooltip` · `Custom`
+
+### Other features
+
+- Accessibility / semantic tree (`role`, `label`, `checked`, `value`, …)
+- Focus management (`focusable`, `tab_index`)
+- Plugin system (`xent_plugins.h`)
+- CLI tooling (`xent_cli.h`)
+
+### Public headers
+
+`xent.h` · `xent_types.h` · `xent_layout.h` · `xent_text.h` · `xent_plugins.h` · `xent_cli.h`
 
 ---
 
-## Why Xent?
+## fluxent
 
-### vs Qt
-**Qt** renders its own style everywhere, often looking alien on modern systems.
-**Xent** delegates rendering to the native OS compositor, ensuring your app always looks native and respects system updates automatically.
+**Repository**: [github.com/Project-Xent/fluxent](https://github.com/Project-Xent/fluxent)  
+**Language**: C · **Platform**: Windows 10/11 · **Build**: xmake  
+**Latest commit**: Large-scale new controls + focus navigation (2026-04-12)
 
-### vs Flutter
-**Flutter** uses a custom rendering engine (Skia/Impeller), adding size overhead and potential input lag.
-**Xent** is a thin C++ layer over native APIs. Zero runtime overhead.
+### Rendering stack
 
-### vs Electron
-**Electron** ships an entire browser.
-**Xent** produces single-file binaries (KB, not MB) with instant startup.
+- **Win32** window management
+- **Direct2D** 2D drawing primitives
+- **DirectWrite** text rendering
+- **DirectComposition** composited windows
+- **Backdrop effects**: Mica / Mica Alt / Acrylic (via `DwmSetWindowAttribute` + DComp)
+
+Two-phase rendering pipeline: *collect* (walk xent-core node tree, build render command list) → *execute* (dispatch to per-control renderers).
+
+### Control library (18 controls)
+
+| Control | Notes |
+|---------|-------|
+| Button | Standard / Subtle / Text / Accent styles |
+| ToggleButton | Checked/unchecked state |
+| RepeatButton | Initial delay + repeat interval |
+| Checkbox | Three-state: Unchecked / Checked / Indeterminate |
+| RadioButton | Mutually exclusive group selection |
+| ToggleSwitch | Animated knob (normal / hover / press sizes) |
+| Slider | Horizontal, animated thumb scaling |
+| TextBox | Full editor: UTF-8/16, cursor, selection, multi-line, Undo/Redo (50 levels), IME, auto-scroll, right-click menu |
+| PasswordBox | TextBox core + `●` mask, press-to-reveal |
+| NumberBox | min / max / step, SpinButtons in Inline / Compact / Hidden modes |
+| ProgressBar | Determinate and indeterminate modes |
+| ProgressRing | Circular progress indicator |
+| ScrollView | Horizontal and vertical, Auto/Always/Never scrollbar policy |
+| Card | Container with background and shadow |
+| Divider | Separator line |
+| HyperlinkButton | Visited / unvisited color distinction |
+| InfoBadge | Dot / Number / Icon variants |
+| Text | Static multi-line text with alignment and weight |
+
+### Input system
+
+- Mouse: hit testing, hover, click, double/triple click, scroll wheel
+- Keyboard: full `WM_KEYDOWN` routing to focused node
+- IME: `WM_IME_COMPOSITION` with cursor position feedback (`ImmSetCompositionWindow`)
+- Right-click context menu
+- Tab / Arrow key focus navigation ordered by `tab_index`
+
+### Theme system
+
+- Modes: Light / Dark / System (reads Windows preference)
+- 35+ Fluent color semantic tokens (control fill, stroke, accent, text, card, focus, background, …)
+- Version-number cache so controls refresh colors only when the theme changes
+
+### Animation system
+
+Frame-driven `FluxTween` (float) and `FluxColorTween` (RGBA), no external dependencies.
+
+| Constant | Duration | Used for |
+|----------|----------|----------|
+| `FLUX_ANIM_DURATION_FAST` | 83 ms | Checkbox check mark |
+| `FLUX_ANIM_DURATION_NORMAL` | 167 ms | Hover / focus ring |
+| `FLUX_ANIM_DURATION_SLOW` | 250 ms | Color transitions |
+| `FLUX_ANIM_DURATION_PRESS` | 110 ms | Press feedback |
+| `FLUX_ANIM_DURATION_SLIDER` | 83 ms | Slider thumb scale |
+
+Easing: `ease_out_quad`, `ease_in_out_cubic`.
+
+### Other features
+
+- Popup / ContextMenu system (borderless child window)
+- Plugin interface
+- `FluxNodeStore`: per-node UI state (visuals, state flags, event callbacks) keyed by `XentNodeId`
 
 ---
 
-## Getting Started
+## Building
 
-### Prerequisites
-- C++20 Compiler (MSVC, GCC, or Clang)
-- xmake
-
-### internal-preview build (Windows-only)
+Both repositories use [xmake](https://xmake.io).
 
 ```bash
-# Clone the repository
 git clone https://github.com/Project-Xent/xent-core.git
 git clone https://github.com/Project-Xent/fluxent.git
 
-# Build and run the example
 cd fluxent
 xmake
 xmake run hello-fluxent
 ```
 
----
-
-## Component Tree (DSL)
-
-Xent uses a declarative, fluent syntax to build UI hierarchies with strict ownership semantics.
-
-```cpp
-// Example: A simple counter component
-using namespace xent::dsl;
-
-return Create<VStack>({
-    Create<Text>("Counter App") // Temporary Text created
-        .FontSize(24)
-        .Margin(10),
-
-    Create<HStack>({
-        Create<Button>("-").OnClick(&State::decrement, &state),
-        Create<Text>(state.count_string),
-        Create<Button>("+").OnClick(&State::increment, &state)
-    }).Gap(20)
-
-}).AlignItems(YGAlignCenter);
-```
-
-### Core Components
-- **Layouts**: `VStack`, `HStack`, `Spacer`
-- **Controls**: `Text`, `Button`, `CheckBox`, `RadioButton`, `ToggleButton`
-- **Modifiers**: `.Padding()`, `.Background()`, `.CornerRadius()`, `.OnClick()`
-
----
-
-### Core Components (updated)
-- **Layouts**: `VStack`, `HStack`, `Spacer`, `Grid`
-- **Controls**: `Text`, `TextBox`, `Button`, `ToggleButton`, `ToggleSwitch`, `CheckBox`, `RadioButton`, `Slider`, `ScrollView`
-- **Visuals**: Icon support for controls, theming and WinUI3-style visuals
-- **Modifiers**: `.Padding()`, `.Background()`, `.CornerRadius()`, `.OnClick()`, `.Icon()`
-
----
-
-## Recent Implementations
-
-The repository has recently landed several features and refactors. Notable items from the commit history:
-
-- `TextBox` control with IME support and input/IME integration
-- `Slider` and `ScrollView` controls plus animation utilities
-- `ToggleSwitch` control and improved control rendering
-- Checkbox visual states and improved Button/Toggle visuals (WinUI3-style)
-- Icon support for `Button` and `ToggleButton`
-- Plugin system added
-- Replaced `std::function` with `xent::Delegate` for callback efficiency
-- Added `tl::expected` third-party header
-- Large refactors of controls, rendering and input handling
-
-## Roadmap (updated)
-
-- [x] **Core**: Reactivity system and Yoga layout integration.
-- [x] **Windows**: DirectComposition rendering pipeline.
-- [x] **Windows**: Basic Fluent controls (Button, Toggle, Checkbox).
-- [x] **Windows**: TextBox, IME support, ToggleSwitch, Slider, ScrollView, icons and improved button visuals.
-- [x] **Windows**: Plugin system and callback refactor (`xent::Delegate`).
-- [ ] **Windows**: Complete advanced layout components (Grid polishing, virtualization)
-- [ ] **Linux**: Initial Wayland surface integration and LuXent port.
-- [ ] **macOS**: Metal/SwiftUI bridge prototype and NeXent port.
+ISPC must be available on `PATH` to compile the SIMD kernels in xent-core.
 
 ---
 
 ## License
 
-BSD 3-Clause License
-
----
-
-## Inspiration
-
-- **OpenStep**: The original native cross-platform UI (NeXTSTEP heritage)
-- **React**: Component-based architecture
-- **SwiftUI**: Declarative syntax and reactive updates
-- **Yoga**: Fast Flexbox layout engine
-- **Enlightenment**: Unix GUI philosophy and EFL architecture
-- **WinUI**: Fluent Design System
+BSD 3-Clause
