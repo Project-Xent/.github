@@ -173,9 +173,3 @@ xmake run hello-fluxent
 ```
 
 ISPC must be available on `PATH` to compile the SIMD kernels in xent-core.
-
----
-
-## License
-
-BSD 3-Clause
