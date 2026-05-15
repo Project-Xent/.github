@@ -97,21 +97,13 @@ mindmap
 
 Pluggable `XentTextBackend` interface with a built-in **Mono** backend (zero external dependencies): word-wrap, char-wrap, multi-line measurement. Two-level cache: `XentTextCache` → `XentShapeCache`.
 
-### Control Types
-
-<details>
-<summary><b>27 control types</b></summary>
-
-`Container` · `Text` · `Button` · `ToggleButton` · `Checkbox` · `Radio` · `Switch` · `Slider` · `TextInput` · `Scroll` · `Image` · `Progress` · `List` · `Tab` · `Card` · `Divider` · `Canvas` · `PasswordBox` · `NumberBox` · `Hyperlink` · `RepeatButton` · `ProgressRing` · `InfoBadge` · `Tooltip` · `Flyout` · `MenuFlyout` · `Custom`
-
-</details>
-
 ### Other Features
 
 - **Accessibility** — semantic tree (`role`, `label`, `checked`, `value`, `enabled`, `expanded`, `selected`)
 - **Focus management** — `focusable`, `tab_index`
+- **Node tagging** — generic `uint8_t` per-node tag (`xent_set/get_node_tag`) for consumer-defined typing
 - **Plugin system** — `xent_plugins.h`
-- **CLI tooling** — JSON dump, demo scaffolding (`xent_cli.h`)
+- **CLI tooling** — JSON dump, demo scaffolding (`xent_cli.h`, opt-in include)
 - **Profiling** — `xent_profile_get()` / `xent_profile_dump()`
 
 ### Public Headers
@@ -154,6 +146,8 @@ flowchart LR
 ```
 
 ### Control Library
+
+fluxent defines the `XentControlType` enum (`flux_control_type.h`) — 27 control types that drive renderer dispatch, input routing, and factory creation. 21 of these have dedicated renderers:
 
 <details>
 <summary><b>21 rendered controls</b></summary>
