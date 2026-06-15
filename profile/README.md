@@ -1,224 +1,205 @@
-# Project Xent
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Project_Xent-pure_C_desktop_UI-e2e8f0?style=for-the-badge&labelColor=0f172a">
+  <img alt="Project Xent" src="https://img.shields.io/badge/Project_Xent-pure_C_desktop_UI-334155?style=for-the-badge&labelColor=f8fafc">
+</picture>
 
-**A pure-C UI layout engine — currently under active development.**
+![0BSD](https://img.shields.io/badge/license-0BSD-3b82f6?style=flat-square)
+![C11/C17](https://img.shields.io/badge/C11%2FC17-no_C++-475569?style=flat-square&logo=c&logoColor=white)
+![xmake](https://img.shields.io/badge/build-xmake-22c55e?style=flat-square)
+![MSVC · clang · MinGW](https://img.shields.io/badge/MSVC_%C2%B7_clang_%C2%B7_MinGW-passing-22c55e?style=flat-square)
 
-[![License](https://img.shields.io/badge/License-0BSD-228B22.svg)](https://opensource.org/licenses/0BSD)
-[![Standard](https://img.shields.io/badge/Standard-C11%20/%20C17-00599C.svg)](https://en.cppreference.com/w/c/11)
-[![ISPC](https://img.shields.io/badge/Parallel-ISPC-0071C5.svg)](https://ispc.github.io/)
+A desktop UI stack written entirely in C — layout engine, platform bindings,
+Fluent Design controls, and a declarative Elm-architecture view layer — with
+zero C++ and zero runtime dependencies beyond the OS.
+
+```c
+int main(void) {
+    Model model = { .count = 0 };
+    return fx_app_run(
+        &(FluxAppConfig){ .title = L"Hello", .width = 640, .height = 480 },
+        &model, update, view);
+}
+```
 
 ---
 
 ## Architecture
 
-Project Xent is split into two repositories with a clear separation of concerns:
-
-| | [xent-core](https://github.com/Project-Xent/xent-core) | [fluxent](https://github.com/Project-Xent/fluxent) |
-|---|---|---|
-| **Role** | Cross-platform layout engine | Windows Fluent Design UI framework |
-| **Scope** | Node tree, layout, text measurement, semantics, SIMD | Rendering, controls, input, theming, animation |
-| **Platform** | Any (no OS deps) | Windows 10/11 |
-| **Rendering** | None | Direct2D · DirectWrite · DirectComposition |
-
 ```mermaid
 block-beta
-  columns 1
+  columns 3
 
-  block:fluxent_block["fluxent"]
-    columns 4
-    A["Win32\nWindow"] B["Direct2D\nRendering"] C["DirectWrite\nText"] D["DirectComposition\nCompositing"]
-    E["21 Controls"] F["Input\nSystem"] G["Theme\nEngine"] H["Animation\nSystem"]
+  block:desc:3
+    columns 3
+    fx["fx.h — Elm MVU declarative layer"]:3
+    fluxent["FluXent\n(Windows)"]  nexent["NeXent\n(macOS)"]  luxent["LuXent\n(BSD · Linux)"]
+    d2d["D2D / DComp\nDirectWrite\nWinRT"]  metal["Metal\nCoreText\nCoreAnimation"]  arcan["Arcan / 9P\nHarfBuzz + FreeType\nEGL"]
+    cwinrt["cwinrt\nWinRT C projection"]  objc["ObjC runtime\nbridge"]  shmif["SHMIF\n9P mount"]
+    xent["xent-core — layout · tree · text · semantics · SIMD"]:3
   end
 
-  space
-
-  block:xent_block["xent-core"]
-    columns 4
-    I["Flex"] J["SwiftStack"] K["Grid"] L["Absolute"]
-    M["Text\nMeasurement"] N["ISPC\nSIMD"] O["Semantics\n& A11y"] P["Plugin\nSystem"]
-  end
-
-  fluxent_block -- "XentNodeId / XentContext" --> xent_block
-
-  style fluxent_block fill:#2d333b,stroke:#539bf5,color:#adbac7
-  style xent_block fill:#2d333b,stroke:#57ab5a,color:#adbac7
+  style fx fill:#3b82f6,color:#fff,stroke:none
+  style xent fill:#3b82f6,color:#fff,stroke:none
+  style fluxent fill:#22c55e,color:#fff,stroke:none
+  style nexent fill:#a1a1aa,color:#fff,stroke:none
+  style luxent fill:#a1a1aa,color:#fff,stroke:none
+  style d2d fill:#22c55e,color:#fff,stroke:none
+  style metal fill:#a1a1aa,color:#fff,stroke:none
+  style arcan fill:#a1a1aa,color:#fff,stroke:none
+  style cwinrt fill:#22c55e,color:#fff,stroke:none
+  style objc fill:#a1a1aa,color:#fff,stroke:none
+  style shmif fill:#a1a1aa,color:#fff,stroke:none
 ```
+
+> [!NOTE]
+> <b>Green</b> = shipped &nbsp; <b>Grey</b> = planned
+
+`xent-core` and `fx.h` are platform-agnostic and shared across every target.
+Each platform provides its own rendering backend and system bindings; the
+declarative layer reconciles against whichever backend is underneath.
 
 ---
 
-## xent-core
+## Repositories
 
-> **Repository** — [github.com/Project-Xent/xent-core](https://github.com/Project-Xent/xent-core)
-> · **Language** — C11
-> · **Build** — xmake
+### [`xent-core`](https://github.com/Project-Xent/xent-core) &ensp; ![lines](https://img.shields.io/badge/23.5k_lines-C11-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
 
-### Layout Protocols
+Platform-agnostic layout engine and node tree.
 
-```mermaid
-graph LR
-  subgraph Protocols
-    direction TB
-    F["<b>Flex</b><br/>row · column · wrap<br/>justify · align<br/>grow · shrink"]
-    S["<b>SwiftStack</b><br/>priority-based stack<br/>spacers · layout_priority"]
-    G["<b>Grid</b><br/>CSS Grid subset<br/>AUTO · PIXEL · STAR<br/>spans up to 16×16"]
-    A["<b>Absolute</b><br/>explicit position/size"]
-  end
-
-  style F fill:#2d333b,stroke:#539bf5,color:#adbac7
-  style S fill:#2d333b,stroke:#539bf5,color:#adbac7
-  style G fill:#2d333b,stroke:#539bf5,color:#adbac7
-  style A fill:#2d333b,stroke:#539bf5,color:#adbac7
-```
-
-Incremental layout is supported via dirty-flag propagation (`DIRTY_SELF` · `DIRTY_SUBTREE` · `DIRTY_LAYOUT`). The engine skips clean subtrees on re-layout.
-
-### Node Storage
-
-Nodes are stored in a Structure-of-Arrays (`XentNodeStore`) for cache-friendly access. Fields cover tree topology, layout inputs/outputs, Flex and SwiftStack properties, Grid definitions, text attributes, accessibility semantics, and focus metadata (`focusable`, `tab_index`).
-
-### SIMD Acceleration
-
-ISPC kernels with runtime SSE4 / AVX2 dispatch accelerate:
-
-```mermaid
-mindmap
-  root((ISPC Kernels))
-    Flex
-      Line statistics<br/>four-way parallel reduction
-      Grow / shrink distribution
-    SwiftStack
-      Spacer distribution<br/>masked add · FMA
-      Proportional reduce
-    Utility
-      Dirty-flag batch OR / clear
-      Pixel quantization
-```
-
-### Text Subsystem
-
-Pluggable `XentTextBackend` interface with a built-in **Mono** backend (zero external dependencies): word-wrap, char-wrap, multi-line measurement. Two-level cache: `XentTextCache` → `XentShapeCache`.
-
-### Other Features
-
-- **Accessibility** — semantic tree (`role`, `label`, `checked`, `value`, `enabled`, `expanded`, `selected`)
-- **Focus management** — `focusable`, `tab_index`
-- **Node tagging** — generic `uint8_t` per-node tag (`xent_set/get_node_tag`) for consumer-defined typing
-- **Plugin system** — `xent_plugins.h`
-- **CLI tooling** — JSON dump, demo scaffolding (`xent_cli.h`, opt-in include)
-- **Profiling** — `xent_profile_get()` / `xent_profile_dump()`
-
-### Public Headers
-
-`xent.h` · `xent_types.h` · `xent_layout.h` · `xent_text.h` · `xent_plugins.h` · `xent_cli.h`
-
----
-
-## fluxent
-
-> **Repository** — [github.com/Project-Xent/fluxent](https://github.com/Project-Xent/fluxent)
-> · **Language** — C17
-> · **Platform** — Windows 10/11
-> · **Build** — xmake
-
-### Rendering Pipeline
-
-Two-phase rendering: **collect** (walk xent-core node tree → build render command list) → **execute** (dispatch to per-control renderers).
-
-```mermaid
-flowchart LR
-  A["Node Tree\n(xent-core)"] -->|walk| B["Collect Phase"]
-  B -->|render commands| C["Execute Phase"]
-  C --> D["Direct2D"]
-  C --> E["DirectWrite"]
-  C --> F["DirectComposition"]
-
-  subgraph Backdrop
-    G["Mica"] ~~~ H["Mica Alt"] ~~~ I["Acrylic"]
-  end
-
-  F --> Backdrop
-
-  style A fill:#2d333b,stroke:#57ab5a,color:#adbac7
-  style B fill:#2d333b,stroke:#539bf5,color:#adbac7
-  style C fill:#2d333b,stroke:#539bf5,color:#adbac7
-  style D fill:#2d333b,stroke:#da3633,color:#adbac7
-  style E fill:#2d333b,stroke:#da3633,color:#adbac7
-  style F fill:#2d333b,stroke:#da3633,color:#adbac7
-```
-
-### Control Library
-
-fluxent defines the `XentControlType` enum (`flux_control_type.h`) — 27 control types that drive renderer dispatch, input routing, and factory creation. 21 of these have dedicated renderers:
+| | |
+|---|---|
+| **Layout protocols** | Flex (CSS Flexbox), Grid (WinUI Star/Auto/Pixel), SwiftStack (SwiftUI VStack/HStack semantics), Absolute |
+| **Data layout** | Structure-of-Arrays — one contiguous float array per property, SIMD-friendly |
+| **SIMD** | Optional ISPC backend (SSE4 + AVX2 multi-target dispatch) for hot layout paths |
+| **Text** | Pluggable backend with measurement cache; built-in monospace fallback for headless use |
+| **Correctness** | Yoga-ported conformance suite (13k lines), 19 unit-test targets, regression-gated benchmarks |
+| **Accessibility** | Semantic roles, labels, checked/enabled/expanded states, focus + tab-index in the core tree |
 
 <details>
-<summary><b>21 rendered controls</b></summary>
+<summary>Public API surface</summary>
 
-| Control | Notes |
-|---------|-------|
-| **Button** | Standard / Subtle / Text / Accent styles |
-| **ToggleButton** | Checked / unchecked state |
-| **RepeatButton** | Initial delay + repeat interval |
-| **Checkbox** | Three-state: Unchecked / Checked / Indeterminate |
-| **RadioButton** | Mutually exclusive group selection |
-| **ToggleSwitch** | Animated knob (normal / hover / press sizes) |
-| **Slider** | Horizontal, animated thumb scaling |
-| **TextBox** | Full editor: UTF-8/16, cursor, selection, multi-line, Undo/Redo (50 levels), IME, auto-scroll, right-click context menu |
-| **PasswordBox** | TextBox core + `●` mask, press-to-reveal |
-| **NumberBox** | min / max / step, SpinButtons: Inline / Compact / Hidden |
-| **ProgressBar** | Determinate and indeterminate modes |
-| **ProgressRing** | Circular progress indicator |
-| **ScrollView** | H/V scroll, Auto / Always / Never scrollbar policy |
-| **Card** | Container with background and shadow |
-| **Divider** | Separator line |
-| **HyperlinkButton** | Visited / unvisited color distinction |
-| **InfoBadge** | Dot / Number / Icon variants |
-| **Text** | Static multi-line with alignment and weight |
-| **Flyout** | Transient content anchored to target, light-dismiss |
-| **MenuFlyout** | Context menu with items, separators, nested submenus |
-| **Tooltip** | Delayed hover info popup, auto-repositioning |
+```c
+XentContext *xent_create_context(XentConfig const *config);
+XentNodeId   xent_create_node(XentContext *ctx);
+bool         xent_set_protocol(XentContext *ctx, XentNodeId node, XentProtocol protocol);
+bool         xent_set_flex_direction(XentContext *ctx, XentNodeId node, XentFlexDirection dir);
+bool         xent_set_stack_axis(XentContext *ctx, XentNodeId node, XentAxis axis);
+bool         xent_layout(XentContext *ctx, XentNodeId root, float w, float h);
+// … size, margin, padding, gap, min/max, percent, aspect-ratio, grid tracks,
+//   direction (LTR/RTL), wrap-content, z-index, dirty flags, profiling …
+```
 
 </details>
 
-### Input System
+---
 
-- **Mouse** — hit testing, hover, click, double/triple click, scroll wheel
-- **Keyboard** — full `WM_KEYDOWN` routing to focused node
-- **IME** — `WM_IME_COMPOSITION` with cursor position feedback
-- **Focus nav** — Tab / Arrow key ordered by `tab_index`
+### [`cwinrt`](https://github.com/Project-Xent/cwinrt) &ensp; ![lines](https://img.shields.io/badge/12k_written_%C2%B7_786k_generated-C-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square) ![CI](https://img.shields.io/github/actions/workflow/status/Project-Xent/cwinrt/ci.yml?style=flat-square&label=CI)
 
-### Theme System
+Pure C projection for the entire Windows Runtime.
 
-Light / Dark / System (reads Windows preference) with 39 Fluent semantic color tokens. Version-number cache so controls refresh only when the theme changes.
+| | |
+|---|---|
+| **Generator** | Reads `.winmd` as PE + ECMA-335 `#~` metadata — no `cor.h`, no COM SDK headers |
+| **Coverage** | 342 `Windows.*` namespaces; one header + one impl per namespace |
+| **Runtime** | `init` · `hstring` (UTF-8/16) · `factory` (cached) · `async` (event + poll) · `delegate` · `event` — 951 lines total |
+| **Naming** | [Frozen mangling spec](https://github.com/Project-Xent/cwinrt/blob/main/docs/MANGLING.md); overloads keyed by type signature, not ordinal — SDK additions never rename existing symbols |
+| **CI gates** | Determinism (byte-stable) · Golden (ABI SHA-256) · PIID vs cppwinrt · Slot vs ABI · All-header compile · All-impl link · clang `-Werror` · MinGW full link × 4 arch · E2E on hardware |
+| **Toolchains** | MSVC · clang-cl · clang · llvm-mingw |
 
-### Animation System
+<details>
+<summary>C++/WinRT migration cheat sheet</summary>
 
-Frame-driven `FluxTween` (float) and `FluxColorTween` (RGBA), no external dependencies.
+| C++/WinRT | cwinrt |
+|---|---|
+| `winrt::init_apartment()` | `cwinrt_init(RO_INIT_MULTITHREADED)` |
+| `Calendar c;` | `WGL_Calendar *c; wgl_calendar_new(&c);` |
+| `c.Year()` | `int32_t y; wgl_calendar_get__year(c, &y);` |
+| `obj.as<T>()` | `cwinrt_query(obj, &CWINRT_IID_T, &out)` |
+| `co_await op;` | `cwinrt_async_wait((IUnknown *)op, INFINITE);` |
+| `event += h;` | `on_event(self, fn, ctx)` → `cwinrt_token` |
+| RAII release | `((IUnknown *)p)->lpVtbl->Release((IUnknown *)p)` |
 
-| Duration | Timing | Used for |
-|----------|--------|----------|
-| 83 ms | Fast | Checkbox check mark, slider thumb |
-| 110 ms | Press | Press feedback |
-| 167 ms | Normal | Hover / focus ring |
-| 250 ms | Slow | Color transitions |
-
-Easing: `ease_out_quad` · `ease_in_out_cubic`
+</details>
 
 ---
 
-## Building
+### [`fluxent`](https://github.com/Project-Xent/fluxent) &ensp; ![lines](https://img.shields.io/badge/45k_lines-C17-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
 
-Both repositories use [xmake](https://xmake.io).
+WinUI 3-class Fluent Design controls, driven by xent-core layout and cwinrt platform integration.
 
-```bash
-git clone https://github.com/Project-Xent/xent-core.git
-git clone https://github.com/Project-Xent/fluxent.git
+| | |
+|---|---|
+| **Controls** | Button · Checkbox · RadioButton · ToggleSwitch · Slider · ComboBox · DropDownButton · SplitButton · TextBox · PasswordBox · NumberBox · ProgressBar · ProgressRing · ScrollViewer · Card · InfoBadge · InfoBar · Divider · Expander · Hyperlink · RepeatButton · Image · NavigationView (hierarchical) · TabView (close / reorder / add) · ContentDialog (modal focus trap) · MenuFlyout · MenuBar · Tooltip |
+| **Render** | Direct2D / DirectWrite with snapshot diff + per-node cache; or Windows.UI.Composition retained tree with compositor-thread animations and InteractionTracker scrolling |
+| **Theming** | Live system accent + light/dark palettes using WinUI 3 design tokens |
+| **Input** | Hit testing · keyboard focus · DirectManipulation inertial scroll · InteractionTracker |
+| **Accessibility** | Win32 UI Automation provider — control types, patterns, focus/invoke events |
 
-cd fluxent
-xmake
-xmake run hello-fluxent
+#### `fx.h` — Elm Architecture in C
+
+Each frame the app's `view` builds a throwaway element tree from arena memory;
+the reconciler diffs it against the previous frame and patches retained controls.
+Controls never call back directly — they post `FxMsg` values consumed by `update`.
+
+```c
+FluxEl *view(FxUi *ui, void *model) {
+    Model *m = model;
+    return fx_column(ui, (FxStackDesc){.gap = 12, .padding = {32,32,32,32}}, (FluxEl*[]){
+        fx_text(ui, "Counter", (FxTextDesc){.size = 24}),
+        fx_text(ui, fx_fmt(ui, "Count: %d", m->count), (FxTextDesc){0}),
+        fx_button(ui, "Increment", (FxButtonDesc){.on_click = fx_msg(MSG_INC)}),
+        m->count > 0
+            ? fx_button(ui, "Reset", (FxButtonDesc){.on_click = fx_msg(MSG_RESET)})
+            : NULL,
+    FX_END});
+}
 ```
 
-> [!TIP]
-> On Windows, building with **MinGW (UCRT)** produces the smallest binaries.
+> Compound literals + designated initializers make every property optional with
+> a zero default. `NULL` entries are conditional rendering. The gallery demo —
+> NavigationView, 20+ control pages — is ≈ 1200 lines of view code.
 
-> [!NOTE]
-> ISPC must be available on `PATH` to compile the SIMD kernels in xent-core.
+---
+
+## Platform roadmap
+
+| Target | Backend | Binding layer | Status |
+|:---|:---|:---|:---:|
+| Windows 10+ | D2D · DirectWrite · DComp | cwinrt (WinRT C projection) | ✅ |
+| macOS | Metal · CoreAnimation · CoreText | ObjC runtime bridge | 🔲 |
+| OpenBSD | Arcan | SHMIF · 9P | 🔲 |
+| FreeBSD | Arcan | SHMIF · 9P | 🔲 |
+| musl Linux | Arcan | SHMIF · 9P | 🔲 |
+
+The BSD and Linux stack targets [Arcan](https://arcan-fe.com) — a
+single-protocol (`SHMIF`) display server with security-oriented composition —
+and exposes UI resources over [9P](https://9p.cat-v.org) for Plan 9-style
+composability and network transparency.
+
+OpenBSD is the primary development platform for LuXent; its `pledge`/`unveil`
+model and strict libc complement Arcan's design. Downstream porting follows
+least-friction order: FreeBSD first, then musl-based Linux
+([Chimera Linux](https://chimera-linux.org),
+[Void Linux](https://voidlinux.org)).
+
+---
+
+## Build
+
+All repositories use [xmake](https://xmake.io).
+
+```bash
+# xent-core
+xmake && xmake test
+
+# cwinrt (Windows, requires Windows SDK)
+xmake build cwinrt-gen cwinrt-rt test_smoke
+xmake run test_smoke
+
+# fluxent (Windows 10 1903+)
+xmake run hello_fluxent
+```
+
+---
+
+<sub>Every repository under Project Xent is released under the [0BSD](https://opensource.org/license/0bsd) license.</sub>
