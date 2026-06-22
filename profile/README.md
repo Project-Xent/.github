@@ -15,7 +15,7 @@ zero C++ and zero runtime dependencies beyond the OS.
 ```c
 int main(void) {
     Model model = { .count = 0 };
-    return fx_app_run(
+    return flux_run(
         &(FluxAppConfig){ .title = L"Hello", .width = 640, .height = 480 },
         &model, update, view);
 }
@@ -31,14 +31,14 @@ block-beta
 
   block:desc:3
     columns 3
-    fx["fx.h — Elm MVU declarative layer"]:3
+    xentkit["xent-kit — Elm MVU declarative layer"]:3
     fluxent["FluXent\n(Windows)"]  nexent["NeXent\n(macOS)"]  luxent["LuXent\n(BSD · Linux)"]
     d2d["D2D / DComp\nDirectWrite\nWinRT"]  metal["Metal\nCoreText\nCoreAnimation"]  arcan["Arcan / 9P\nHarfBuzz + FreeType\nEGL"]
     cwinrt["cwinrt\nWinRT C projection"]  objc["ObjC runtime\nbridge"]  shmif["SHMIF\n9P mount"]
     xent["xent-core — layout · tree · text · semantics · SIMD"]:3
   end
 
-  style fx fill:#3b82f6,color:#fff,stroke:none
+  style xentkit fill:#3b82f6,color:#fff,stroke:none
   style xent fill:#3b82f6,color:#fff,stroke:none
   style fluxent fill:#22c55e,color:#fff,stroke:none
   style nexent fill:#a1a1aa,color:#fff,stroke:none
@@ -54,9 +54,9 @@ block-beta
 > [!NOTE]
 > <b>Green</b> = shipped &nbsp; <b>Grey</b> = planned
 
-`xent-core` and `fx.h` are platform-agnostic and shared across every target.
-Each platform provides its own rendering backend and system bindings; the
-declarative layer reconciles against whichever backend is underneath.
+`xent-core` and `xent-kit` are platform-agnostic and shared across every
+target. Each platform provides its own rendering backend and system bindings;
+xent-kit's reconciler diffs against whichever backend is underneath.
 
 ---
 
@@ -87,6 +87,76 @@ bool         xent_set_stack_axis(XentContext *ctx, XentNodeId node, XentAxis axi
 bool         xent_layout(XentContext *ctx, XentNodeId root, float w, float h);
 // … size, margin, padding, gap, min/max, percent, aspect-ratio, grid tracks,
 //   direction (LTR/RTL), wrap-content, z-index, dirty flags, profiling …
+```
+
+</details>
+
+---
+
+### [`xent-kit`](https://github.com/Project-Xent/xent-kit) &ensp; ![lines](https://img.shields.io/badge/1.6k_lines-C17-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
+
+Platform-agnostic declarative UI toolkit — Elm Architecture in C.
+
+Each frame the app's `view` builds a throwaway element tree from arena memory;
+the reconciler diffs it against the previous frame and patches retained controls.
+Controls never call back directly — they post `XtkMsg` values consumed by `update`.
+
+```c
+XtkEl *view(XtkUi *ui, void *model) {
+    Model *m = model;
+    return xtk_column(ui, (XtkStackDesc){.gap = 12, .padding = {32,32,32,32}}, (XtkEl*[]){
+        xtk_text(ui, "Counter", (XtkTextDesc){.size = 24}),
+        xtk_text(ui, xtk_fmt(ui, "Count: %d", m->count), (XtkTextDesc){0}),
+        xtk_button(ui, "Increment", (XtkButtonDesc){.on_click = xtk_msg(MSG_INC)}),
+        m->count > 0
+            ? xtk_button(ui, "Reset", (XtkButtonDesc){.on_click = xtk_msg(MSG_RESET)})
+            : NULL,
+    XTK_END});
+}
+```
+
+> Compound literals + designated initializers make every property optional with
+> a zero default. `NULL` entries are conditional rendering. The gallery demo —
+> NavigationView, 21 control pages — is ≈ 1200 lines of view code.
+
+| | |
+|---|---|
+| **Architecture** | Elm MVU — `Model` struct + pure `update(model, msg)` + pure `view(ui, model)` |
+| **Element tree** | Double-buffered arena allocation; previous frame's tree stays alive for diffing, then the old arena resets |
+| **Reconciler** | Keyed + positional child matching with reorder detection; `NULL` = conditional skip |
+| **Backend** | 9-function `XtkBackend` vtable — `create`, `update`, `destroy`, `reorder`, `set_root`, `request_frame`, `show_popup`, `close_popup`, `set_cursor` |
+| **Messages** | Tagged-union `XtkMsg` with `tag` + `value` (int or float); ring-buffer queue (256 entries) |
+| **Controls** | Button · Checkbox · RadioButton · ToggleSwitch · Slider · ComboBox · DropDownButton · SplitButton · TextBox · PasswordBox · NumberBox · ProgressBar · ProgressRing · ScrollViewer · Card · InfoBadge · InfoBar · Divider · Expander · Hyperlink · RepeatButton · Image · NavigationView · TabView · ContentDialog · MenuFlyout · MenuBar · Tooltip |
+
+<details>
+<summary>Public API surface</summary>
+
+```c
+/* elements — each returns an arena-allocated XtkEl* */
+XtkEl *xtk_button(XtkUi *ui, char const *label, XtkButtonDesc desc);
+XtkEl *xtk_text(XtkUi *ui, char const *content, XtkTextDesc desc);
+XtkEl *xtk_column(XtkUi *ui, XtkStackDesc desc, XtkEl *children[]);
+XtkEl *xtk_row(XtkUi *ui, XtkStackDesc desc, XtkEl *children[]);
+XtkEl *xtk_slider(XtkUi *ui, XtkSliderDesc desc);
+XtkEl *xtk_nav_view(XtkUi *ui, XtkNavViewDesc desc, XtkEl *children[]);
+XtkEl *xtk_tab_view(XtkUi *ui, XtkTabViewDesc desc, XtkEl *children[]);
+XtkEl *xtk_content_dialog(XtkUi *ui, XtkContentDialogDesc desc, XtkEl *children[]);
+// … checkbox, radio, toggle_switch, combo_box, card, expander, info_bar,
+//   menu_bar, dropdown_button, split_button, image, hyperlink, tooltip …
+
+/* modifiers — return the same element pointer for chaining */
+XtkEl *xtk_keyed(XtkUi *ui, char const *key, XtkEl *el);
+XtkEl *xtk_sized(XtkEl *el, float w, float h);
+XtkEl *xtk_grow(XtkEl *el, float grow);
+
+/* messages */
+XtkMsg xtk_msg(int tag);
+XtkMsg xtk_msg_i(int tag, int value);
+XtkMsg xtk_msg_f(int tag, float value);
+
+/* utilities */
+char const  *xtk_fmt(XtkUi *ui, char const *fmt, ...);
+XtkEl      **xtk_children_alloc(XtkUi *ui, int capacity);
 ```
 
 </details>
@@ -125,39 +195,30 @@ Pure C projection for the entire Windows Runtime.
 
 ### [`fluxent`](https://github.com/Project-Xent/fluxent) &ensp; ![lines](https://img.shields.io/badge/45k_lines-C17-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
 
-WinUI 3-class Fluent Design controls, driven by xent-core layout and cwinrt platform integration.
+WinUI 3-class Fluent Design backend for xent-kit, driven by xent-core layout
+and cwinrt platform integration.
 
 | | |
 |---|---|
-| **Controls** | Button · Checkbox · RadioButton · ToggleSwitch · Slider · ComboBox · DropDownButton · SplitButton · TextBox · PasswordBox · NumberBox · ProgressBar · ProgressRing · ScrollViewer · Card · InfoBadge · InfoBar · Divider · Expander · Hyperlink · RepeatButton · Image · NavigationView (hierarchical) · TabView (close / reorder / add) · ContentDialog (modal focus trap) · MenuFlyout · MenuBar · Tooltip |
-| **Render** | Direct2D / DirectWrite with snapshot diff + per-node cache; or Windows.UI.Composition retained tree with compositor-thread animations and InteractionTracker scrolling |
-| **Theming** | Live system accent + light/dark palettes using WinUI 3 design tokens |
+| **Render** | Direct2D / DirectWrite with snapshot diff + per-node cache; or Windows.UI.Composition retained tree with identity-stable visual reconciler, compositor-thread animations, and InteractionTracker scrolling |
+| **Theming** | Live system accent + light/dark palettes using WinUI 3 design tokens; pixel-matched color values |
 | **Input** | Hit testing · keyboard focus · DirectManipulation inertial scroll · InteractionTracker |
 | **Accessibility** | Win32 UI Automation provider — control types, patterns, focus/invoke events |
+| **Bridge** | Implements xent-kit's 9-function `XtkBackend` vtable; maps declarative element diffs to retained Fluent controls |
+| **Dual API** | Declarative Elm path via xent-kit (`flux_run`), or imperative retained-mode path via `flux_create_*` for full node-level control |
+| **Gallery** | Bundled WinUI Gallery-class demo app — NavigationView shell, 21 control pages, ≈ 1200 lines of pure view code |
+| **Tests** | Headless reconciler lifecycle, keyed add/remove sequences, cross-axis geometry, CSS §9.4 grow+wrap regression, subtree destruction + leak detection — all GPU-free |
 
-#### `fx.h` — Elm Architecture in C
+<details>
+<summary>Gallery pages</summary>
 
-Each frame the app's `view` builds a throwaway element tree from arena memory;
-the reconciler diffs it against the previous frame and patches retained controls.
-Controls never call back directly — they post `FxMsg` values consumed by `update`.
+Home · Button · Checkbox · RadioButton · ToggleSwitch · Slider · ComboBox ·
+DropDownButton · SplitButton · RepeatButton · Hyperlink · TextBox ·
+PasswordBox · NumberBox · Typography · ProgressBar · ProgressRing · InfoBadge ·
+InfoBar · Image · Expander · Divider · Card · ScrollViewer · MenuBar ·
+TabView · NavigationView · ContentDialog · Tooltip · Settings
 
-```c
-FluxEl *view(FxUi *ui, void *model) {
-    Model *m = model;
-    return fx_column(ui, (FxStackDesc){.gap = 12, .padding = {32,32,32,32}}, (FluxEl*[]){
-        fx_text(ui, "Counter", (FxTextDesc){.size = 24}),
-        fx_text(ui, fx_fmt(ui, "Count: %d", m->count), (FxTextDesc){0}),
-        fx_button(ui, "Increment", (FxButtonDesc){.on_click = fx_msg(MSG_INC)}),
-        m->count > 0
-            ? fx_button(ui, "Reset", (FxButtonDesc){.on_click = fx_msg(MSG_RESET)})
-            : NULL,
-    FX_END});
-}
-```
-
-> Compound literals + designated initializers make every property optional with
-> a zero default. `NULL` entries are conditional rendering. The gallery demo —
-> NavigationView, 20+ control pages — is ≈ 1200 lines of view code.
+</details>
 
 ---
 
@@ -192,11 +253,17 @@ All repositories use [xmake](https://xmake.io).
 # xent-core
 xmake && xmake test
 
+# xent-kit
+xmake && xmake test
+
 # cwinrt (Windows, requires Windows SDK)
 xmake build cwinrt-gen cwinrt-rt test_smoke
 xmake run test_smoke
 
-# fluxent (Windows 10 1903+)
+# fluxent gallery (Windows 10 1903+)
+xmake run gallery
+
+# fluxent hello demo (Windows 10 1903+)
 xmake run hello_fluxent
 ```
 
