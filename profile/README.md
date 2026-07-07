@@ -4,7 +4,7 @@
 </picture>
 
 ![0BSD](https://img.shields.io/badge/license-0BSD-3b82f6?style=flat-square)
-![C11/C17](https://img.shields.io/badge/C11%2FC17-no_C++-475569?style=flat-square&logo=c&logoColor=white)
+![C23](https://img.shields.io/badge/C23-no_C++-475569?style=flat-square&logo=c&logoColor=white)
 ![xmake](https://img.shields.io/badge/build-xmake-22c55e?style=flat-square)
 ![MSVC · clang · MinGW](https://img.shields.io/badge/MSVC_%C2%B7_clang_%C2%B7_MinGW-passing-22c55e?style=flat-square)
 
@@ -62,7 +62,7 @@ xent-kit's reconciler diffs against whichever backend is underneath.
 
 ## Repositories
 
-### [`xent-core`](https://github.com/Project-Xent/xent-core) &ensp; ![lines](https://img.shields.io/badge/23.5k_lines-C11-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
+### [`xent-core`](https://github.com/Project-Xent/xent-core) &ensp; ![lines](https://img.shields.io/badge/23.5k_lines-C23-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
 
 Platform-agnostic layout engine and node tree.
 
@@ -93,7 +93,7 @@ bool         xent_layout(XentContext *ctx, XentNodeId root, float w, float h);
 
 ---
 
-### [`xent-kit`](https://github.com/Project-Xent/xent-kit) &ensp; ![lines](https://img.shields.io/badge/1.6k_lines-C17-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
+### [`xent-kit`](https://github.com/Project-Xent/xent-kit) &ensp; ![lines](https://img.shields.io/badge/1.6k_lines-C23-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
 
 Platform-agnostic declarative UI toolkit — Elm Architecture in C.
 
@@ -193,7 +193,7 @@ Pure C projection for the entire Windows Runtime.
 
 ---
 
-### [`fluxent`](https://github.com/Project-Xent/fluxent) &ensp; ![lines](https://img.shields.io/badge/45k_lines-C17-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
+### [`fluxent`](https://github.com/Project-Xent/fluxent) &ensp; ![lines](https://img.shields.io/badge/45k_lines-C23-475569?style=flat-square) ![0BSD](https://img.shields.io/badge/0BSD-3b82f6?style=flat-square)
 
 WinUI 3-class Fluent Design backend for xent-kit, driven by xent-core layout
 and cwinrt platform integration.
